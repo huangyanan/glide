@@ -208,6 +208,18 @@ class DecodeJob<A, T, Z> {
         if (Log.isLoggable(TAG, Log.VERBOSE) && result != null) {
             logWithTimeAndKey("Decoded source from cache", startTime);
         }
+
+        //add by huangyanan when load cache failed then decode source data. start
+        if (result == null) {
+            startTime = LogTime.getLogTime();
+            result = loadProvider.getSourceDecoder().decode(data, width, height);
+//            Utils.reportError(null, "kGlideImageLoadCacheFailed", null);
+            if (Log.isLoggable(TAG, Log.VERBOSE)) {
+                logWithTimeAndKey("Cache failed,Decoded from source", startTime);
+            }
+        }
+        //add by huangyanan end
+
         return result;
     }
 
