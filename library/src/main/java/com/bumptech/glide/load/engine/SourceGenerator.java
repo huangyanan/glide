@@ -8,6 +8,7 @@ import com.bumptech.glide.load.data.DataFetcher;
 import com.bumptech.glide.load.model.ModelLoader;
 import com.bumptech.glide.load.model.ModelLoader.LoadData;
 import com.bumptech.glide.util.LogTime;
+import java.io.IOException;
 import java.util.Collections;
 
 /**
@@ -41,7 +42,9 @@ class SourceGenerator implements DataFetcherGenerator,
   public boolean startNext() {
     if (dataToCache != null) {
       Object data = dataToCache;
-      dataToCache = null;
+      //modify by huang yanan to fix io bug start 会在onDataFetcherFailed onDataFetcherReady进行清理
+//      dataToCache = null;
+      //modify by huang yanan to fix io bug start
       cacheData(data);
     }
 
@@ -84,7 +87,9 @@ class SourceGenerator implements DataFetcherGenerator,
             + ", duration: " + LogTime.getElapsedMillis(startTime));
       }
     } finally {
-      loadData.fetcher.cleanup();
+      //modify by huang yanan to fix io bug start 会在onDataFetcherFailed onDataFetcherReady进行清理
+//      loadData.fetcher.cleanup();
+      //modify by huang yanan to fix io bug end
     }
 
     sourceCacheGenerator =
@@ -132,11 +137,25 @@ class SourceGenerator implements DataFetcherGenerator,
     // This data fetcher will be loading from a File and provide the wrong data source, so override
     // with the data source of the original fetcher
     cb.onDataFetcherReady(sourceKey, data, fetcher, loadData.fetcher.getDataSource(), sourceKey);
+    //add by huang yanan to fix io bug start
+    loadData.fetcher.cleanup();
+    dataToCache = null;
+    //add by huang yanan to fix io bug end
   }
 
   @Override
   public void onDataFetcherFailed(Key sourceKey, Exception e, DataFetcher<?> fetcher,
       DataSource dataSource) {
-    cb.onDataFetcherFailed(sourceKey, e, fetcher, loadData.fetcher.getDataSource());
+
+    //modify by huang yanan to fix io bug start
+    if (dataToCache != null && e instanceof IOException) {//如果获取到数据但是IO异常，我们直接使用数据
+      cb.onDataFetcherReady(loadData.sourceKey, dataToCache, loadData.fetcher,
+          loadData.fetcher.getDataSource(), originalKey);
+    } else {
+      cb.onDataFetcherFailed(sourceKey, e, fetcher, loadData.fetcher.getDataSource());
+    }
+    loadData.fetcher.cleanup();
+    dataToCache = null;
+    //modify by huang yanan to fix io bug end
   }
 }
